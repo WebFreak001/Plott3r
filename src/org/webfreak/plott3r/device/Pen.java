@@ -1,8 +1,6 @@
 package org.webfreak.plott3r.device;
 
-import lejos.hardware.sensor.AnalogSensor;
 import lejos.hardware.sensor.EV3TouchSensor;
-import lejos.hardware.sensor.SensorMode;
 import lejos.robotics.RegulatedMotor;
 
 public class Pen {
@@ -13,16 +11,15 @@ public class Pen {
 	private double xCentimeters;
 	private boolean down = false;
 
+	private double degreePerCm = 382.5 / 12.0;
 	private int xScale = -1;
-	private double width = 17.6;
-	private double beltRadiusCentimeters = 2.25;
+	private double width = 18.5;
+	private double beltRadiusCentimeters = 1.9;
 
 	public Pen(RegulatedMotor xMotor, RegulatedMotor zMotor, EV3TouchSensor touch) {
 		this.xMotor = xMotor;
 		this.zMotor = zMotor;
 		this.touch = touch;
-
-		xMotor.setSpeed(40);
 	}
 
 	public RegulatedMotor getXMotor() {
@@ -41,48 +38,82 @@ public class Pen {
 		this.zMotor = zMotor;
 	}
 
+	public void setSpeed(double cmPerSecond) {
+		getXMotor().setSpeed((int) (cmPerSecond * 180 / (Math.PI * beltRadiusCentimeters)));
+	}
+
 	public void reset() {
-		stopWrite();
+		getZMotor().setSpeed(100);
+		getXMotor().setSpeed(200);
+
+		getZMotor().rotate(-5);
+		getZMotor().rotate(5);
+		getZMotor().flt();
+		getZMotor().resetTachoCount();
 		xCentimeters = 0;
 		if (xScale < 0)
 			getXMotor().forward();
 		else
 			getXMotor().backward();
 
+		float[] sample = new float[1];
 		while (true) {
-			float[] sample = new float[1];
 			touch.getTouchMode().fetchSample(sample, 0);
-			if (sample[0] > 0.5)
-				getXMotor().stop();
+			if (sample[0] > 0.5) {
+				getXMotor().flt();
+				break;
+			}
 		}
+
+		setSpeed(1.5);
 	}
 
 	public void moveX(double cm) {
+		moveX(cm, false);
+	}
+
+	public void moveX(double cm, boolean async) {
 		if (xCentimeters + cm < 0) {
 			cm = -xCentimeters;
 			xCentimeters = 0;
 		} else if (xCentimeters + cm > width) {
 			cm = width - xCentimeters;
 			xCentimeters = width;
+		} else {
+			xCentimeters += cm;
 		}
-		double degrees = (180.0 / (beltRadiusCentimeters * Math.PI)) * cm;
+		double degrees = cm * degreePerCm;
 		int rounded = (int) Math.round(degrees);
 
 		double error = degrees - rounded;
-		xCentimeters -= (error / 180.0) * (Math.PI * beltRadiusCentimeters);
+		xCentimeters += error / degreePerCm;
 
-		getXMotor().rotate(rounded * xScale);
+		getXMotor().rotate(rounded * xScale, async);
+	}
+	
+	public void moveToX(double cm) {
+		moveToX(cm, false);
+	}
+	
+	public void moveToX(double cm, boolean async) {
+		moveX(cm - xCentimeters, async);
+	}
+	
+	public double getX() {
+		return xCentimeters;
 	}
 
 	public void startWrite() {
 		if (down)
 			return;
-		getZMotor().rotate(45);
+		getZMotor().rotateTo(-30);
+		down = true;
 	}
 
 	public void stopWrite() {
 		if (!down)
 			return;
-		getZMotor().rotate(-38);
+		getZMotor().rotateTo(0);
+		down = false;
 	}
 }
