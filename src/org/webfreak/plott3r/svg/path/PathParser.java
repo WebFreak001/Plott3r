@@ -297,6 +297,7 @@ public class PathParser {
 		Matcher matcher = nonNegativePattern.matcher(pathData);
 		if (!matcher.matches())
 			return Double.NaN;
+		pathData.remove(0, matcher.group().length());
 		// java handles it all
 		return Double.parseDouble(matcher.group());
 	}
