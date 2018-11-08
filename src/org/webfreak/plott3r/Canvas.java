@@ -20,7 +20,30 @@ public class Canvas {
 
 	public void lineTo(double x, double y) {
 		pen.startWrite();
-		moveTo(x, y);
+		moveToNoChange(x, y);
+	}
+
+	/**
+	 * Moves the pen to the specified position (only when a draw call follows) in centimeters before any transformation.
+	 *
+	 * @param x The x coordinate to move to in centimeters without any transformation.
+	 * @param y The y coordinate to move to in centimeters without any transformation.
+	 */
+	public void moveTo(double x, double y) {
+		moveTo(x, y, false);
+	}
+	
+	/**
+	 * Moves the pen to the specified position (possibly without draw calls) in centimeters before any transformation.
+	 *
+	 * @param x The x coordinate to move to in centimeters without any transformation.
+	 * @param y The y coordinate to move to in centimeters without any transformation.
+	 * @param strict If true, the pen will move even if there is no draw command following in the path.
+	 */
+	public void moveTo(double x, double y, boolean strict) {
+		// TODO: implement strict
+		pen.stopWrite();
+		moveToNoChange(x,y);
 	}
 
 	public void bezierTo(double c1x, double c1y, double c2x, double c2y, double endX, double endY) {
@@ -28,9 +51,13 @@ public class Canvas {
 	}
 
 	public void bezierTo(Vector2d c1, Vector2d c2, Vector2d end) {
-		Vector2d start = new Vector2d(pen.getX(), board.getY());
+		Vector2d start = new Vector2d(pen.getX() / scale, board.getY() / scale);
 
-		for (double t = 0; t <= 1; t += 1 / 8.0) {
+		int steps = (int)(Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(c2).getLengthSquared() + c2.subtract(end).getLengthSquared()) * scale * 0.2);
+		if (steps < 4) steps = 4;
+		else if (steps > 32) steps = 32;
+
+		for (double t = 0; t <= 1; t += 1 / (double)(steps)) {
 			double t1 = (1 - t);
 			double t2 = t1 * (1 - t);
 			double t3 = t2 * (1 - t);
@@ -41,13 +68,8 @@ public class Canvas {
 			lineTo(point.getX(), point.getY());
 		}
 	}
-	
-	public void moveTo(double x, double y) {
-		pen.stopWrite();
-		moveToNoChange(x,y);
-	}
 
-	public void moveToNoChange(double x, double y) {
+	private void moveToNoChange(double x, double y) {
 		x *= scale;
 		y *= scale;
 		
@@ -57,7 +79,17 @@ public class Canvas {
 		double dx = x - cx;
 		double dy = y - cy;
 
-		if (Math.abs(dx) < 0.01) {
+		moveRelativeNoChangePostTransform(dx, dy);
+	}
+
+	private void moveRelativeNoChange(double dx, double dy) {
+		moveRelativeNoChangePostTransform(dx * scale, dy * scale);
+	}
+
+	private void moveRelativeNoChangePostTransform(double dx, double dy) {
+		if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
+			return;
+		} else if (Math.abs(dx) < 0.01) {
 			board.setSpeed(baseSpeed);
 			board.moveY(dy);
 		} else if (Math.abs(dy) < 0.01) {
@@ -78,6 +110,9 @@ public class Canvas {
 		}
 	}
 
+	/**
+	 * Implements the Path defintion according to the w3 SVG 1.1 (Second Edition) Specification Chapter 8.3 (Paths)
+	 */
 	public void drawPath(String path) {
 	}
 }
