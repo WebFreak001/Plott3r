@@ -5,6 +5,7 @@ public class PathSegCurvetoQuadraticAbs extends PathSeg {
 	private double endX, endY;
 
 	public PathSegCurvetoQuadraticAbs(double x1, double y1, double endX, double endY) {
+		this.pathSegType = PathSeg.PATHSEG_CURVETO_QUADRATIC_ABS;
 		this.x1 = x1;
 		this.y1 = y1;
 		this.endX = endX;

@@ -4,6 +4,7 @@ public class PathSegLinetoRel extends PathSeg {
 	private double x, y;
 
 	public PathSegLinetoRel(double x, double y) {
+		this.pathSegType = PathSeg.PATHSEG_LINETO_REL;
 		this.x = x;
 		this.y = y;
 	}

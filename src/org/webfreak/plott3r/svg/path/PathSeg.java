@@ -22,7 +22,7 @@ public abstract class PathSeg {
 	public static final short PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS = 18;
 	public static final short PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL = 19;
 
-	private short pathSegType;
+	protected short pathSegType;
 
 	public short getPathSegType() {
 		return pathSegType;

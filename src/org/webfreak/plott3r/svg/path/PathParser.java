@@ -12,8 +12,9 @@ public class PathParser {
 	public PathParser() {
 	}
 
-	public void feed(String data) {
+	public PathParser feed(String data) {
 		pathData.append(data);
+		return this;
 	}
 
 	public Path build() {

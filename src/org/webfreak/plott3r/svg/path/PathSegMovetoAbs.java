@@ -4,6 +4,7 @@ public class PathSegMovetoAbs extends PathSeg {
 	private double x, y;
 
 	public PathSegMovetoAbs(double x, double y) {
+		this.pathSegType = PathSeg.PATHSEG_MOVETO_ABS;
 		this.x = x;
 		this.y = y;
 	}

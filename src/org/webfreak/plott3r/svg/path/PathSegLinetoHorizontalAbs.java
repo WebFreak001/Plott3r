@@ -4,6 +4,7 @@ public class PathSegLinetoHorizontalAbs extends PathSeg {
 	private double x;
 
 	public PathSegLinetoHorizontalAbs(double x) {
+		this.pathSegType = PathSeg.PATHSEG_LINETO_HORIZONTAL_ABS;
 		this.x = x;
 	}
 

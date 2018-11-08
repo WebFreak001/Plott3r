@@ -4,6 +4,7 @@ public class PathSegLinetoVerticalRel extends PathSeg {
 	private double y;
 
 	public PathSegLinetoVerticalRel(double y) {
+		this.pathSegType = PathSeg.PATHSEG_LINETO_VERTICAL_REL;
 		this.y = y;
 	}
 

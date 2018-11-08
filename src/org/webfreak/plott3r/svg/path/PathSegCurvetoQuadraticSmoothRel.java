@@ -4,6 +4,7 @@ public class PathSegCurvetoQuadraticSmoothRel extends PathSeg {
 	private double x, y;
 
 	public PathSegCurvetoQuadraticSmoothRel(double x, double y) {
+		this.pathSegType = PathSeg.PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL;
 		this.x = x;
 		this.y = y;
 	}

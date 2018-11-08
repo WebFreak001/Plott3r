@@ -6,6 +6,7 @@ public class PathSegCurvetoCubicAbs extends PathSeg {
 	private double endX, endY;
 
 	public PathSegCurvetoCubicAbs(double x1, double y1, double x2, double y2, double endX, double endY) {
+		this.pathSegType = PathSeg.PATHSEG_CURVETO_CUBIC_ABS;
 		this.x1 = x1;
 		this.y1 = y1;
 		this.x2 = x2;

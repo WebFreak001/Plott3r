@@ -20,4 +20,12 @@ public class SVGPoint {
 		return new SVGPoint(matrix.getA() * x + matrix.getB() * y + matrix.getC(),
 				matrix.getD() * x + matrix.getE() * y + matrix.getF());
 	}
+
+	public SVGPoint offset(double x, double y) {
+		return new SVGPoint(this.x + x, this.y + y);
+	}
+
+	public SVGPoint clone() {
+		return new SVGPoint(x, y);
+	}
 }

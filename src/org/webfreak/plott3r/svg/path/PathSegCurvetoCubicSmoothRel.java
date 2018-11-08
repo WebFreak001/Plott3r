@@ -5,6 +5,7 @@ public class PathSegCurvetoCubicSmoothRel extends PathSeg {
 	private double endX, endY;
 
 	public PathSegCurvetoCubicSmoothRel(double x2, double y2, double endX, double endY) {
+		this.pathSegType = PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_REL;
 		this.x2 = x2;
 		this.y2 = y2;
 		this.endX = endX;

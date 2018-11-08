@@ -9,6 +9,7 @@ public class PathSegArcRel extends PathSeg {
 
 	public PathSegArcRel(double x, double y, double rX, double rY, double angle, boolean largeArcFlag,
 			boolean sweepFlag) {
+		this.pathSegType = PathSeg.PATHSEG_ARC_REL;
 		this.x = x;
 		this.y = y;
 		this.rX = rX;
