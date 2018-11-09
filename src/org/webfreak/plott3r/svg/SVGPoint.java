@@ -17,8 +17,14 @@ public class SVGPoint {
 	}
 
 	public SVGPoint matrixTransform(SVGMatrix matrix) {
-		return new SVGPoint(matrix.getA() * x + matrix.getB() * y + matrix.getC(),
-				matrix.getD() * x + matrix.getE() * y + matrix.getF());
+		/*
+		 * [a c e]<br>
+		 * [b d f]<br>
+		 * [0 0 1]
+		 */
+		
+		return new SVGPoint(matrix.getA() * x + matrix.getC() * y + matrix.getE(),
+				matrix.getB() * x + matrix.getD() * y + matrix.getF());
 	}
 
 	public SVGPoint offset(double x, double y) {

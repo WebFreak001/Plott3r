@@ -8,13 +8,14 @@ public class Pen {
 	private RegulatedMotor zMotor;
 	private EV3TouchSensor touch;
 
-	private double xCentimeters;
+	private double xCentimeters, xAbsolute;
 	private boolean down = false;
 
-	private double degreePerCm = 382.5 / 12.0;
+	private double degreePerCm = 382.5 / 4.0;
 	private int xScale = -1;
-	private double width = 18.5;
+	private double width = 16.8;
 	private double beltRadiusCentimeters = 1.9;
+	private double translation = 1 / 3.0;
 
 	public Pen(RegulatedMotor xMotor, RegulatedMotor zMotor, EV3TouchSensor touch) {
 		this.xMotor = xMotor;
@@ -39,7 +40,7 @@ public class Pen {
 	}
 
 	public void setSpeed(double cmPerSecond) {
-		getXMotor().setSpeed((int) (cmPerSecond * 180 / (Math.PI * beltRadiusCentimeters)));
+		getXMotor().setSpeed((int) (cmPerSecond * 180 / (Math.PI * beltRadiusCentimeters * translation)));
 	}
 
 	public void reset() {
@@ -73,6 +74,7 @@ public class Pen {
 	}
 
 	public void moveX(double cm, boolean async) {
+		xAbsolute = xCentimeters + cm;
 		if (xCentimeters + cm < 0) {
 			cm = -xCentimeters;
 			xCentimeters = 0;
@@ -87,8 +89,9 @@ public class Pen {
 
 		double error = degrees - rounded;
 		xCentimeters += error / degreePerCm;
+		xAbsolute += error / degreePerCm;
 
-		getXMotor().rotate(rounded * xScale, async);
+		getXMotor().rotate((int)(rounded * xScale), async);
 	}
 	
 	public void moveToX(double cm) {
@@ -96,11 +99,12 @@ public class Pen {
 	}
 	
 	public void moveToX(double cm, boolean async) {
-		moveX(cm - xCentimeters, async);
+		moveX(cm - xAbsolute, async);
+		xAbsolute = cm;
 	}
 	
 	public double getX() {
-		return xCentimeters;
+		return xAbsolute;
 	}
 
 	public void startWrite() {

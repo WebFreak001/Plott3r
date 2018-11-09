@@ -2,14 +2,15 @@ package org.webfreak.plott3r;
 
 import org.webfreak.plott3r.device.Board;
 import org.webfreak.plott3r.device.Pen;
+import org.webfreak.plott3r.svg.SVGMatrix;
 import org.webfreak.plott3r.svg.SVGPoint;
 import org.webfreak.plott3r.svg.path.Path;
 import org.webfreak.plott3r.svg.path.PathParser;
 import org.webfreak.plott3r.svg.path.PathSeg;
-import org.webfreak.plott3r.svg.path.PathSegArcAbs;
-import org.webfreak.plott3r.svg.path.PathSegClosePath;
 import org.webfreak.plott3r.svg.path.PathSegCurvetoCubicAbs;
 import org.webfreak.plott3r.svg.path.PathSegCurvetoCubicRel;
+import org.webfreak.plott3r.svg.path.PathSegCurvetoQuadraticAbs;
+import org.webfreak.plott3r.svg.path.PathSegCurvetoQuadraticRel;
 import org.webfreak.plott3r.svg.path.PathSegLinetoAbs;
 import org.webfreak.plott3r.svg.path.PathSegLinetoHorizontalAbs;
 import org.webfreak.plott3r.svg.path.PathSegLinetoHorizontalRel;
@@ -25,11 +26,14 @@ public class Canvas {
 	private Pen pen;
 	private Board board;
 
-	private double scale = 0.5;
+	private SVGMatrix transform;
+	private SVGMatrix inverse;
 
 	private double baseSpeed = 5;
 
 	public Canvas(Pen pen, Board board) {
+		this.transform = SVGMatrix.identity();
+		this.inverse = SVGMatrix.identity();
 		this.pen = pen;
 		this.board = board;
 	}
@@ -78,7 +82,7 @@ public class Canvas {
 		Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
 
 		int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(c2).getLengthSquared()
-				+ c2.subtract(end).getLengthSquared()) * scale * 0.2);
+				+ c2.subtract(end).getLengthSquared()) * 0.2);
 		if (steps < 4)
 			steps = 4;
 		else if (steps > 32)
@@ -94,21 +98,42 @@ public class Canvas {
 		}
 	}
 
-	private void moveToNoChange(double x, double y) {
-		x *= scale;
-		y *= scale;
+	public void quadraticBezierTo(double c1x, double c1y, double endX, double endY) {
+		quadraticBezierTo(new Vector2d(c1x, c1y), new Vector2d(endX, endY));
+	}
 
-		double cx = pen.getX();
-		double cy = board.getY();
+	public void quadraticBezierTo(Vector2d c1, Vector2d end) {
+		SVGPoint svgStart = getCurrentPoint();
+		Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
+
+		int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(end).getLengthSquared())
+				* 0.2);
+		if (steps < 4)
+			steps = 4;
+		else if (steps > 32)
+			steps = 32;
+
+		for (double t = 0; t <= 1; t += 1 / (double) (steps)) {
+			double t1 = (1 - t);
+			double t2 = t1 * (1 - t);
+			Vector2d point = start.multiply(t2).add(c1.multiply(2 * t1 * t)).add(end.multiply(t * t));
+			lineTo(point.getX(), point.getY());
+		}
+	}
+
+	private void moveToNoChange(double x, double y) {
+		SVGPoint cp = getCurrentPoint();
+		double cx = cp.getX();
+		double cy = cp.getY();
 
 		double dx = x - cx;
 		double dy = y - cy;
 
-		moveRelativeNoChangePostTransform(dx, dy);
-	}
+		SVGPoint p = new SVGPoint(dx, dy).matrixTransform(transform);
+		dx = p.getX();
+		dy = p.getY();
 
-	private void moveRelativeNoChange(double dx, double dy) {
-		moveRelativeNoChangePostTransform(dx * scale, dy * scale);
+		moveRelativeNoChangePostTransform(dx, dy);
 	}
 
 	private void moveRelativeNoChangePostTransform(double dx, double dy) {
@@ -123,20 +148,20 @@ public class Canvas {
 		} else {
 			double length = Math.sqrt(dx * dx + dy * dy);
 
-			pen.setSpeed(dx / length * baseSpeed);
-			board.setSpeed(dy / length * baseSpeed);
 			board.getYMotor().synchronizeWith(new RegulatedMotor[] { pen.getXMotor() });
+			board.setSpeed(dy / length * baseSpeed);
+			pen.setSpeed(dx / length * baseSpeed);
 			board.getYMotor().startSynchronization();
-			board.moveY(dy);
-			pen.moveX(dx);
+			board.moveY(dy, true);
+			pen.moveX(dx, true);
 			board.getYMotor().endSynchronization();
-			pen.getXMotor().waitComplete();
 			board.getYMotor().waitComplete();
+			pen.getXMotor().waitComplete();
 		}
 	}
 
 	public SVGPoint getCurrentPoint() {
-		return new SVGPoint(pen.getX() / scale, board.getY() / scale);
+		return new SVGPoint(pen.getX(), board.getY()).matrixTransform(inverse);
 	}
 
 	/**
@@ -156,38 +181,53 @@ public class Canvas {
 			case PathSeg.PATHSEG_CLOSEPATH:
 				lineTo(pathStart.getX(), pathStart.getY());
 				currentPoint = pathStart;
+				break;
 			case PathSeg.PATHSEG_MOVETO_ABS:
 				PathSegMovetoAbs ma = (PathSegMovetoAbs) segment;
 				pathStart = currentPoint = new SVGPoint(ma.getX(), ma.getY());
 				moveTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_MOVETO_REL:
 				PathSegMovetoRel mr = (PathSegMovetoRel) segment;
 				pathStart = currentPoint = currentPoint.offset(mr.getX(), mr.getY());
 				moveTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_LINETO_ABS:
 				PathSegLinetoAbs la = (PathSegLinetoAbs) segment;
 				currentPoint = new SVGPoint(la.getX(), la.getY());
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_LINETO_REL:
 				PathSegLinetoRel lr = (PathSegLinetoRel) segment;
 				currentPoint = currentPoint.offset(lr.getX(), lr.getY());
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_CURVETO_CUBIC_ABS:
 				PathSegCurvetoCubicAbs cca = (PathSegCurvetoCubicAbs) segment;
 				SVGPoint cca1 = new SVGPoint(cca.getX1(), cca.getY1());
 				SVGPoint cca2 = new SVGPoint(cca.getX2(), cca.getY2());
 				currentPoint = new SVGPoint(cca.getEndX(), cca.getEndY());
 				bezierTo(cca1.getX(), cca1.getY(), cca2.getX(), cca2.getY(), currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_CURVETO_CUBIC_REL:
 				PathSegCurvetoCubicRel ccr = (PathSegCurvetoCubicRel) segment;
 				SVGPoint ccr1 = currentPoint.offset(ccr.getX1(), ccr.getY1());
 				SVGPoint ccr2 = currentPoint.offset(ccr.getX2(), ccr.getY2());
 				currentPoint = currentPoint.offset(ccr.getEndX(), ccr.getEndY());
 				bezierTo(ccr1.getX(), ccr1.getY(), ccr2.getX(), ccr2.getY(), currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_CURVETO_QUADRATIC_ABS:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_ABS.");
+				PathSegCurvetoQuadraticAbs cqa = (PathSegCurvetoQuadraticAbs) segment;
+				SVGPoint cqa1 = new SVGPoint(cqa.getX1(), cqa.getY1());
+				currentPoint = new SVGPoint(cqa.getEndX(), cqa.getEndY());
+				quadraticBezierTo(cqa1.getX(), cqa1.getY(), currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_CURVETO_QUADRATIC_REL:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_REL.");
+				PathSegCurvetoQuadraticRel cqr = (PathSegCurvetoQuadraticRel) segment;
+				SVGPoint cqr1 = new SVGPoint(cqr.getX1(), cqr.getY1());
+				currentPoint = new SVGPoint(cqr.getEndX(), cqr.getEndY());
+				quadraticBezierTo(cqr1.getX(), cqr1.getY(), currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_ARC_ABS:
 				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_ARC_ABS.");
 			case PathSeg.PATHSEG_ARC_REL:
@@ -196,18 +236,22 @@ public class Canvas {
 				PathSegLinetoHorizontalAbs ha = (PathSegLinetoHorizontalAbs) segment;
 				currentPoint = new SVGPoint(ha.getX(), currentPoint.getY());
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_LINETO_HORIZONTAL_REL:
 				PathSegLinetoHorizontalRel hr = (PathSegLinetoHorizontalRel) segment;
 				currentPoint = currentPoint.offset(hr.getX(), 0);
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_LINETO_VERTICAL_ABS:
 				PathSegLinetoVerticalAbs va = (PathSegLinetoVerticalAbs) segment;
 				currentPoint = new SVGPoint(currentPoint.getX(), va.getY());
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_LINETO_VERTICAL_REL:
 				PathSegLinetoVerticalRel vr = (PathSegLinetoVerticalRel) segment;
 				currentPoint = currentPoint.offset(0, vr.getY());
 				lineTo(currentPoint.getX(), currentPoint.getY());
+				break;
 			case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_ABS:
 				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_CUBIC_SMOOTH_ABS.");
 			case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
@@ -218,5 +262,20 @@ public class Canvas {
 				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL.");
 			}
 		}
+	}
+
+	public void translate(double x, double y) {
+		this.transform = this.transform.translate(x, y);
+		this.inverse = this.transform.inverse();
+	}
+
+	public void scale(double factor) {
+		this.transform = this.transform.scale(factor);
+		this.inverse = this.transform.inverse();
+	}
+
+	public void scale(double x, double y) {
+		this.transform = this.transform.scaleNonUniform(x, y);
+		this.inverse = this.transform.inverse();
 	}
 }

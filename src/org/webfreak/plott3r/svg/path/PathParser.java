@@ -10,6 +10,7 @@ public class PathParser {
 	private Path path;
 
 	public PathParser() {
+		pathData = new StringBuilder();
 	}
 
 	public PathParser feed(String data) {
@@ -81,11 +82,16 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint point = enforce(parseCoordinatePair(), "moveto-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint point = enforce(pair, "moveto-coordinate-pair");
 			double x = point.getX();
 			double y = point.getY();
 			path.getPathSegList().add(relative ? new PathSegMovetoRel(x, y) : new PathSegMovetoAbs(x, y));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -93,6 +99,7 @@ public class PathParser {
 	private boolean parseClosepath() {
 		if (pathData.length() == 0 || Character.toLowerCase(pathData.charAt(0)) != 'z')
 			return false;
+		pathData.deleteCharAt(0);
 		path.getPathSegList().add(new PathSegClosePath());
 		return true;
 	}
@@ -102,11 +109,16 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint point = enforce(parseCoordinatePair(), "lineto-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint point = enforce(pair, "lineto-coordinate-pair");
 			double x = point.getX();
 			double y = point.getY();
 			path.getPathSegList().add(relative ? new PathSegLinetoRel(x, y) : new PathSegLinetoAbs(x, y));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -116,9 +128,14 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			double x = enforce(parseCoordinate(), "lineto-coordinate-pair");
+			double num = parseCoordinate();
+			if (!first && Double.isNaN(num))
+				break;
+			double x = enforce(num, "lineto-coordinate-pair");
 			path.getPathSegList().add(relative ? new PathSegLinetoHorizontalRel(x) : new PathSegLinetoHorizontalAbs(x));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -128,9 +145,14 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			double y = enforce(parseCoordinate(), "lineto-coordinate-pair");
+			double num = parseCoordinate();
+			if (!first && Double.isNaN(num))
+				break;
+			double y = enforce(num, "lineto-coordinate-pair");
 			path.getPathSegList().add(relative ? new PathSegLinetoVerticalRel(y) : new PathSegLinetoVerticalAbs(y));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -140,8 +162,12 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint c1 = enforce(parseCoordinatePair(), "curveto-c1-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint c1 = enforce(pair, "curveto-c1-coordinate-pair");
 			parseCommaWhitespace();
 			SVGPoint c2 = enforce(parseCoordinatePair(), "curveto-c2-coordinate-pair");
 			parseCommaWhitespace();
@@ -149,6 +175,7 @@ public class PathParser {
 			path.getPathSegList()
 					.add(relative ? new PathSegCurvetoCubicRel(c1.getX(), c1.getY(), c2.getX(), c2.getY(), end.getX(), end.getY())
 							: new PathSegCurvetoCubicAbs(c1.getX(), c1.getY(), c2.getX(), c2.getY(), end.getX(), end.getY()));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -158,13 +185,18 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint c2 = enforce(parseCoordinatePair(), "smooth-curveto-c2-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint c2 = enforce(pair, "smooth-curveto-c2-coordinate-pair");
 			parseCommaWhitespace();
 			SVGPoint end = enforce(parseCoordinatePair(), "smooth-curveto-end-coordinate-pair");
 			path.getPathSegList()
 					.add(relative ? new PathSegCurvetoCubicSmoothRel(c2.getX(), c2.getY(), end.getX(), end.getY())
 							: new PathSegCurvetoCubicSmoothAbs(c2.getX(), c2.getY(), end.getX(), end.getY()));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -174,12 +206,17 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint c1 = enforce(parseCoordinatePair(), "quadratic-bezier-curve-c1-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint c1 = enforce(pair, "quadratic-bezier-curve-c1-coordinate-pair");
 			parseCommaWhitespace();
 			SVGPoint end = enforce(parseCoordinatePair(), "quadratic-bezier-curve-end-coordinate-pair");
 			path.getPathSegList().add(relative ? new PathSegCurvetoQuadraticRel(c1.getX(), c1.getY(), end.getX(), end.getY())
 					: new PathSegCurvetoQuadraticAbs(c1.getX(), c1.getY(), end.getX(), end.getY()));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -189,10 +226,15 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			SVGPoint end = enforce(parseCoordinatePair(), "quadratic-bezier-curve-end-coordinate-pair");
+			SVGPoint pair = parseCoordinatePair();
+			if (!first && pair == null)
+				break;
+			SVGPoint end = enforce(pair, "quadratic-bezier-curve-end-coordinate-pair");
 			path.getPathSegList().add(relative ? new PathSegCurvetoQuadraticSmoothRel(end.getX(), end.getY())
 					: new PathSegCurvetoQuadraticSmoothAbs(end.getX(), end.getY()));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -202,8 +244,12 @@ public class PathParser {
 		if (command < 0)
 			return false;
 		boolean relative = command == 1;
+		boolean first = true;
 		do {
-			double radiusX = enforce(parseNonnegativeNumber(), "elliptical-arc-radius-x");
+			double num = parseNonnegativeNumber();
+			if (!first && Double.isNaN(num))
+				break;
+			double radiusX = enforce(num, "elliptical-arc-radius-x");
 			parseCommaWhitespace();
 			double radiusY = enforce(parseNonnegativeNumber(), "elliptical-arc-radius-y");
 			parseCommaWhitespace();
@@ -217,6 +263,7 @@ public class PathParser {
 			path.getPathSegList()
 					.add(relative ? new PathSegArcRel(end.getX(), end.getY(), radiusX, radiusY, rotation, largeArcFlag, sweepFlag)
 							: new PathSegArcAbs(end.getX(), end.getY(), radiusX, radiusY, rotation, largeArcFlag, sweepFlag));
+			first = false;
 		} while (parseCommaWhitespace());
 		return true;
 	}
@@ -264,11 +311,11 @@ public class PathParser {
 		return pathData.charAt(0) != '0' ? 1 : 0;
 	}
 
-	private double parseCoordinate() {
+	public double parseCoordinate() {
 		return parseNumber();
 	}
 
-	private SVGPoint parseCoordinatePair() {
+	public SVGPoint parseCoordinatePair() {
 		double x = parseCoordinate();
 		if (Double.isNaN(x))
 			return null;
@@ -277,7 +324,7 @@ public class PathParser {
 		return new SVGPoint(x, y);
 	}
 
-	private double parseNumber() {
+	public double parseNumber() {
 		if (pathData.length() > 0) {
 			if (pathData.charAt(0) == '+') {
 				pathData.deleteCharAt(0);
@@ -292,14 +339,15 @@ public class PathParser {
 			return Double.NaN;
 	}
 
-	private Pattern nonNegativePattern = Pattern.compile("^(\\d+\\.?|\\d*\\.\\d+)([eE][+-]?\\d+)?");
-	private double parseNonnegativeNumber() {
+	private Pattern nonNegativePattern = Pattern.compile("^([0-9]*\\.[0-9]+|[0-9]+\\.?)([eE][+-]?[0-9]+)?");
+	public double parseNonnegativeNumber() {
 		Matcher matcher = nonNegativePattern.matcher(pathData);
-		if (!matcher.matches())
+		if (!matcher.find())
 			return Double.NaN;
+		String s = matcher.group();
 		pathData.delete(0, matcher.group().length());
 		// java handles it all
-		return Double.parseDouble(matcher.group());
+		return Double.parseDouble(s);
 	}
 
 	private void enforce(boolean b, String what) {
