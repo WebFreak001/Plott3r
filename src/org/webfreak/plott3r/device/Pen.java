@@ -45,7 +45,7 @@ public class Pen {
 
 	public void reset() {
 		getZMotor().setSpeed(100);
-		getXMotor().setSpeed(200);
+		getXMotor().setSpeed(240);
 
 		getZMotor().rotate(-5);
 		getZMotor().rotate(5);

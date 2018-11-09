@@ -12,7 +12,7 @@ public class Board {
 
 	private double degreePerCm = 1000.0 / 12.3;
 	private double wheelRadius = 2.15;
-	private double height = 20;
+	private double height = 27;
 	private int yScale = -1;
 	private int gear1 = 12;
 	private int gear2 = 36;
@@ -105,7 +105,7 @@ public class Board {
 
 		prev = System.currentTimeMillis();
 		redTime = 0;
-		getYMotor().setSpeed(80);
+		getYMotor().setSpeed(100);
 		while (true) {
 			now = System.currentTimeMillis();
 			mode.fetchSample(sample, 0);
@@ -125,5 +125,10 @@ public class Board {
 		}
 		
 		sensor.setFloodlight(false);
+		yCentimeters = 2;
+		yAbsolute = 2;
+		moveY(-2);
+		yCentimeters = 0;
+		yAbsolute = 0;
 	}
 }

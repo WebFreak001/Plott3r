@@ -21,6 +21,7 @@ import org.webfreak.plott3r.svg.path.PathSegMovetoAbs;
 import org.webfreak.plott3r.svg.path.PathSegMovetoRel;
 
 import lejos.robotics.RegulatedMotor;
+import lejos.utility.Matrix;
 
 public class Canvas {
 	private Pen pen;
@@ -29,7 +30,7 @@ public class Canvas {
 	private SVGMatrix transform;
 	private SVGMatrix inverse;
 
-	private double baseSpeed = 5;
+	private double baseSpeed = 3;
 
 	public Canvas(Pen pen, Board board) {
 		this.transform = SVGMatrix.identity();
@@ -43,6 +44,22 @@ public class Canvas {
 		moveToNoChange(x, y);
 	}
 
+	public void arrowTo(double x, double y) {
+		arrowTo(x, y, 0.5);
+	}
+
+	public void arrowTo(double x, double y, double headRadius) {
+		SVGPoint cp = getCurrentPoint();
+		Vector2d direction = new Vector2d(x - cp.getX(), y - cp.getY()).normalized().multiply(headRadius);
+		Vector2d left = direction.rotateLeft90().subtract(direction);
+		Vector2d right = direction.rotateRight90().subtract(direction);
+
+		lineTo(x, y);
+		lineTo(x + left.getX(), y + left.getY());
+		lineTo(x + right.getX(), y + right.getY());
+		lineTo(x, y);
+	}
+	
 	/**
 	 * Moves the pen to the specified position (only when a draw call follows) in
 	 * centimeters before any transformation.
@@ -82,7 +99,7 @@ public class Canvas {
 		Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
 
 		int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(c2).getLengthSquared()
-				+ c2.subtract(end).getLengthSquared()) * 0.2);
+				+ c2.subtract(end).getLengthSquared()) * 0.75);
 		if (steps < 4)
 			steps = 4;
 		else if (steps > 32)
@@ -107,7 +124,7 @@ public class Canvas {
 		Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
 
 		int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(end).getLengthSquared())
-				* 0.2);
+				* 1.1);
 		if (steps < 4)
 			steps = 4;
 		else if (steps > 32)
@@ -122,16 +139,15 @@ public class Canvas {
 	}
 
 	private void moveToNoChange(double x, double y) {
-		SVGPoint cp = getCurrentPoint();
-		double cx = cp.getX();
-		double cy = cp.getY();
+		double cx = pen.getX();
+		double cy = board.getY();
+
+		SVGPoint p = new SVGPoint(x, y).matrixTransform(transform);
+		x = p.getX();
+		y = p.getY();
 
 		double dx = x - cx;
 		double dy = y - cy;
-
-		SVGPoint p = new SVGPoint(dx, dy).matrixTransform(transform);
-		dx = p.getX();
-		dy = p.getY();
 
 		moveRelativeNoChangePostTransform(dx, dy);
 	}
@@ -269,6 +285,11 @@ public class Canvas {
 		this.inverse = this.transform.inverse();
 	}
 
+	public void rotate(double rad) {
+		this.transform = this.transform.rotate(rad);
+		this.inverse = this.transform.inverse();
+	}
+
 	public void scale(double factor) {
 		this.transform = this.transform.scale(factor);
 		this.inverse = this.transform.inverse();
@@ -277,5 +298,10 @@ public class Canvas {
 	public void scale(double x, double y) {
 		this.transform = this.transform.scaleNonUniform(x, y);
 		this.inverse = this.transform.inverse();
+	}
+
+	public void loadIdentity() {
+		this.transform = SVGMatrix.identity();
+		this.inverse = SVGMatrix.identity();
 	}
 }

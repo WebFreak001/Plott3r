@@ -75,4 +75,12 @@ public class Vector2d {
 		Vector2d normal = n.normalized();
 		return in.copy().add(normal.copy().multiply(-2).multiply(normal.dot(in)));
 	}
+
+	public Vector2d rotateLeft90() {
+		return new Vector2d(-y, x);
+	}
+
+	public Vector2d rotateRight90() {
+		return new Vector2d(y, x);
+	}
 }

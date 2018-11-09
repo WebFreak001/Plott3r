@@ -149,7 +149,7 @@ public class SVGMatrix {
 	 */
 	public SVGMatrix rotate(double angle) {
 		double cos = Math.cos(angle);
-		double sin = Math.cos(angle);
+		double sin = Math.sin(angle);
 		return multiply(SVGMatrix.byRows(cos, -sin, 0, sin, cos, 0));
 	}
 

@@ -41,8 +41,10 @@ public class TestMath {
 		assertEquals(m.getF(), 6, 0.01);
 		m = weird.inverse();
 		
+		weird = SVGMatrix.identity().translate(4, 4).rotate(Math.PI / 4).scale(2).translate(2, 3);
 		SVGPoint p = new SVGPoint(3, 5);
-		SVGPoint t = p.matrixTransform(weird).matrixTransform(m);
+		SVGPoint t = p.matrixTransform(weird);
+		t = t.matrixTransform(weird.inverse());
 		assertEquals(p.getX(), t.getX(), 0.01);
 		assertEquals(p.getY(), t.getY(), 0.01);
 	}
