@@ -2,6 +2,7 @@ package org.webfreak.plott3r;
 
 import org.webfreak.plott3r.device.Board;
 import org.webfreak.plott3r.device.Pen;
+import org.webfreak.plott3r.device.VariableMotor;
 import org.webfreak.plott3r.svg.SVGMatrix;
 import org.webfreak.plott3r.svg.SVGPoint;
 import org.webfreak.plott3r.svg.path.Path;
@@ -30,7 +31,7 @@ public class Canvas {
 	private SVGMatrix transform;
 	private SVGMatrix inverse;
 
-	private double baseSpeed = 3;
+	private double baseSpeed = 0.5;
 
 	public Canvas(Pen pen, Board board) {
 		this.transform = SVGMatrix.identity();

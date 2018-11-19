@@ -77,6 +77,10 @@ public class Board {
 	}
 
 	public void pullInPaper() {
+		pullInPaper(-2);
+	}
+
+	public void pullInPaper(double offsetCm) {
 		getYMotor().setSpeed(200);
 
 		SensorMode mode = sensor.getRedMode();
@@ -125,9 +129,9 @@ public class Board {
 		}
 		
 		sensor.setFloodlight(false);
-		yCentimeters = 2;
-		yAbsolute = 2;
-		moveY(-2);
+		yCentimeters = -offsetCm;
+		yAbsolute = -offsetCm;
+		moveY(offsetCm);
 		yCentimeters = 0;
 		yAbsolute = 0;
 	}

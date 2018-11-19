@@ -8,6 +8,8 @@ public class Pen {
 	private RegulatedMotor zMotor;
 	private EV3TouchSensor touch;
 
+	private VariableMotor variableMotor;
+
 	private double xCentimeters, xAbsolute;
 	private boolean down = false;
 
@@ -21,6 +23,13 @@ public class Pen {
 		this.xMotor = xMotor;
 		this.zMotor = zMotor;
 		this.touch = touch;
+
+		variableMotor = new VariableMotor(xMotor);
+	}
+
+	public void stop() {
+		variableMotor.stop();
+		stopWrite();
 	}
 
 	public RegulatedMotor getXMotor() {
@@ -92,6 +101,11 @@ public class Pen {
 		xAbsolute += error / degreePerCm;
 
 		getXMotor().rotate((int)(rounded * xScale), async);
+		//try {
+		//	variableMotor.rotateBy((int)(rounded * xScale), 1, async);
+		//} catch (InterruptedException e) {
+		//	e.printStackTrace();
+		//}
 	}
 	
 	public void moveToX(double cm) {

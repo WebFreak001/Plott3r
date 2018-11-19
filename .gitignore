@@ -55,3 +55,7 @@ local.properties
 .worksheet
 
 Main.jar
+Plott3r.jar
+
+.idea
+*.iml
