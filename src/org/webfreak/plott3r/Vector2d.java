@@ -50,6 +50,10 @@ public class Vector2d {
 		return new Vector2d(x * v, y * v);
 	}
 
+	public Vector2d multiply(Vector2d v) {
+		return new Vector2d(x * v.getX(), y * v.getY());
+	}
+
 	public double getLengthSquared() { // ADDITION
 		return this.x * this.x + this.y * this.y;
 	}

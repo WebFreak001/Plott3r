@@ -2,6 +2,7 @@ package org.webfreak.plott3r.device;
 
 import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.robotics.RegulatedMotor;
+import org.webfreak.plott3r.functions.PlotFunction;
 
 public class Pen {
 	private RegulatedMotor xMotor;
@@ -9,6 +10,7 @@ public class Pen {
 	private EV3TouchSensor touch;
 
 	private VariableMotor variableMotor;
+	private PlotFunction plotFunction = null;
 
 	private double xCentimeters, xAbsolute;
 	private boolean down = false;
@@ -24,7 +26,7 @@ public class Pen {
 		this.zMotor = zMotor;
 		this.touch = touch;
 
-		variableMotor = new VariableMotor(xMotor);
+		this.variableMotor = new VariableMotor(xMotor);
 	}
 
 	public void stop() {
@@ -100,25 +102,36 @@ public class Pen {
 		xCentimeters += error / degreePerCm;
 		xAbsolute += error / degreePerCm;
 
-		getXMotor().rotate((int)(rounded * xScale), async);
-		//try {
-		//	variableMotor.rotateBy((int)(rounded * xScale), 1, async);
-		//} catch (InterruptedException e) {
-		//	e.printStackTrace();
-		//}
+		if (plotFunction == null) {
+			getXMotor().rotate((int) (rounded * xScale), async);
+		} else {
+			try {
+				variableMotor.rotateBy(rounded * xScale, plotFunction, async);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 	}
-	
+
 	public void moveToX(double cm) {
 		moveToX(cm, false);
 	}
-	
+
 	public void moveToX(double cm, boolean async) {
 		moveX(cm - xAbsolute, async);
 		xAbsolute = cm;
 	}
-	
+
 	public double getX() {
 		return xAbsolute;
+	}
+
+	public PlotFunction getPlotFunction() {
+		return plotFunction;
+	}
+
+	public void setPlotFunction(PlotFunction plotFunction) {
+		this.plotFunction = plotFunction;
 	}
 
 	public void startWrite() {
@@ -133,5 +146,9 @@ public class Pen {
 			return;
 		getZMotor().rotateTo(0);
 		down = false;
+	}
+
+	public void complete() {
+		variableMotor.complete();
 	}
 }

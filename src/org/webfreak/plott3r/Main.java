@@ -12,6 +12,8 @@ import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.robotics.RegulatedMotor;
 import lejos.utility.Delay;
 import org.webfreak.plott3r.device.VariableMotor;
+import org.webfreak.plott3r.functions.CircularPlotFunction;
+import org.webfreak.plott3r.functions.PlotFunction;
 
 public class Main {
 	public static void main(String[] args) {
@@ -41,6 +43,7 @@ public class Main {
 		try {
 			draw(canvas);
 		} finally {
+			board.stop();
 			pen.stop();
 		}
 
@@ -54,7 +57,8 @@ public class Main {
 		// 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.4122,8.5C22,12.27
 		// 18.6,15.36 13.45,20.03L12,21.35Z");
 
-		canvas.lineTo(5, 5);
+		canvas.moveTo(4, 0);
+		canvas.bezierTo(8, 4, 0, 8, 4, 12);
 
 		//canvas.translate(1, 2);
 		//canvas.scale(2);

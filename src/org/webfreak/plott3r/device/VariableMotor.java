@@ -1,6 +1,7 @@
 package org.webfreak.plott3r.device;
 
 import lejos.robotics.RegulatedMotor;
+import org.webfreak.plott3r.functions.PlotFunction;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -23,11 +24,11 @@ public class VariableMotor {
 		super.finalize();
 	}
 
-	public void rotateBy(int deg, double curve) throws InterruptedException {
+	public void rotateBy(int deg, PlotFunction curve) throws InterruptedException {
 		rotateBy(deg, curve, false);
 	}
 
-	public void rotateBy(int deg, double curve, boolean immediateReturn) throws InterruptedException {
+	public void rotateBy(int deg, PlotFunction curve, boolean immediateReturn) throws InterruptedException {
 		if (deg == 0) return;
 
 		int start = motor.getTachoCount();
@@ -38,9 +39,9 @@ public class VariableMotor {
 			motor.forward();
 		System.out.println("Submitting job");
 		if (immediateReturn)
-			workQueue.put(new VariableMotorPackage(start, maxSpeed, deg));
+			workQueue.put(new VariableMotorPackage(start, maxSpeed, deg, curve));
 		else
-			regulator.observeMotor(start, maxSpeed, deg);
+			regulator.observeMotor(start, maxSpeed, deg, curve);
 		System.out.println("Done");
 	}
 
@@ -55,39 +56,40 @@ public class VariableMotor {
 			e.printStackTrace();
 		}
 	}
+
+	public void complete() {
+		while (workQueue.peek() != null)
+			Thread.yield();
+		while (regulator.isWorking())
+			Thread.yield();
+	}
 }
 
 class VariableMotorPackage {
 	private int start, maxSpeed, deg;
+	private PlotFunction function;
 
-	public VariableMotorPackage(int start, int maxSpeed, int deg) {
+	public VariableMotorPackage(int start, int maxSpeed, int deg, PlotFunction function) {
 		this.start = start;
 		this.maxSpeed = maxSpeed;
 		this.deg = deg;
+		this.function = function;
 	}
 
 	public int getStart() {
 		return start;
 	}
 
-	public void setStart(int start) {
-		this.start = start;
-	}
-
 	public int getMaxSpeed() {
 		return maxSpeed;
-	}
-
-	public void setMaxSpeed(int maxSpeed) {
-		this.maxSpeed = maxSpeed;
 	}
 
 	public int getDeg() {
 		return deg;
 	}
 
-	public void setDeg(int deg) {
-		this.deg = deg;
+	public PlotFunction getFunction() {
+		return function;
 	}
 }
 
@@ -95,6 +97,7 @@ class VariableMotorRegulator implements Runnable {
 	private Thread thread;
 	private final VariableMotor motor;
 	private boolean running;
+	private boolean working;
 
 	public VariableMotorRegulator(VariableMotor motor) {
 		this.motor = motor;
@@ -110,7 +113,7 @@ class VariableMotorRegulator implements Runnable {
 
 	public void exit() throws InterruptedException {
 		running = false;
-		motor.workQueue.put(new VariableMotorPackage(0, 0, 0));
+		motor.workQueue.put(new VariableMotorPackage(0, 0, 0, null));
 	}
 
 	@Override
@@ -118,10 +121,12 @@ class VariableMotorRegulator implements Runnable {
 		System.out.println("Job started");
 		while (running) {
 			try {
+				working = false;
 				VariableMotorPackage pkg = motor.workQueue.take();
+				working = true;
 				if (pkg == null || !running)
 					break;
-				observeMotor(pkg.getStart(), pkg.getMaxSpeed(), pkg.getDeg());
+				observeMotor(pkg.getStart(), pkg.getMaxSpeed(), pkg.getDeg(), pkg.getFunction());
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -129,15 +134,9 @@ class VariableMotorRegulator implements Runnable {
 		System.out.println("Job finished");
 	}
 
-	private double mapValue(double t) {
-		return t * t;
-	}
-
-	private double mapValueDerivation(double t) {
-		return 2 * t;
-	}
-
-	public void observeMotor(int start, int maxSpeed, int deg) throws InterruptedException {
+	public void observeMotor(int start, int maxSpeed, int deg, PlotFunction function) throws InterruptedException {
+		if (function == null)
+			return;
 		long startTime = System.nanoTime();
 		while (!motor.getMotor().isMoving()) {
 			if (System.nanoTime() - startTime > 1000000000)
@@ -150,17 +149,31 @@ class VariableMotorRegulator implements Runnable {
 			long now = System.nanoTime();
 			double t = (now - startTime) / (double) expectedTime;
 
-			int expected = (int) (start + deg * mapValue(t));
+			int expected = (int) (start + deg * Math.max(Math.min(1, function.map(t)), 0));
 			double modifier = 1;
 			if (current != expected) {
-				double error = Math.abs(expected - current);
-				if (current > expected)
-					modifier = 1 / 0.9;
-				else if (current < expected)
-					modifier = 0.9;
+				double error = expected - current;
+				error *= 0.05;
+				error = Math.abs(error);
+				if (error > 1)
+					error = 1;
+				double adjustment = 1 - (1 - 0.3) * error * error * error;
+				if (deg > 0 ? current < expected : current > expected)
+					modifier = 1 / adjustment;
+				else
+					modifier = adjustment;
 			}
-			int speed = (int) (maxSpeed * modifier * mapValueDerivation(t));
-			motor.getMotor().setSpeed(speed);
+			int speed = (int) (maxSpeed * modifier * Math.max(Math.min(100, function.mapDerivative(t)), -100));
+			if (speed == 0)
+				motor.getMotor().flt(true);
+			else
+			{
+				if (deg > 0 ? speed > 0 : speed < 0)
+					motor.getMotor().forward();
+				else
+					motor.getMotor().backward();
+				motor.getMotor().setSpeed(Math.abs(speed));
+			}
 		}
 		motor.getMotor().setSpeed(maxSpeed);
 		motor.getMotor().rotateTo(start + deg);
@@ -169,5 +182,9 @@ class VariableMotorRegulator implements Runnable {
 	public void start() {
 		System.out.println("Starting thread");
 		thread.start();
+	}
+
+	public boolean isWorking() {
+		return working;
 	}
 }

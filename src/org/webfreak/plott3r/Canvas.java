@@ -3,6 +3,7 @@ package org.webfreak.plott3r;
 import org.webfreak.plott3r.device.Board;
 import org.webfreak.plott3r.device.Pen;
 import org.webfreak.plott3r.device.VariableMotor;
+import org.webfreak.plott3r.functions.VectorPlotFunction;
 import org.webfreak.plott3r.svg.SVGMatrix;
 import org.webfreak.plott3r.svg.SVGPoint;
 import org.webfreak.plott3r.svg.path.Path;
@@ -31,13 +32,21 @@ public class Canvas {
 	private SVGMatrix transform;
 	private SVGMatrix inverse;
 
-	private double baseSpeed = 0.5;
+	private double baseSpeed = 0.7;
 
 	public Canvas(Pen pen, Board board) {
 		this.transform = SVGMatrix.identity();
 		this.inverse = SVGMatrix.identity();
 		this.pen = pen;
 		this.board = board;
+	}
+
+	public Pen getPen() {
+		return pen;
+	}
+
+	public Board getBoard() {
+		return board;
 	}
 
 	public void lineTo(double x, double y) {
@@ -60,7 +69,7 @@ public class Canvas {
 		lineTo(x + right.getX(), y + right.getY());
 		lineTo(x, y);
 	}
-	
+
 	/**
 	 * Moves the pen to the specified position (only when a draw call follows) in
 	 * centimeters before any transformation.
@@ -97,9 +106,42 @@ public class Canvas {
 
 	public void bezierTo(Vector2d c1, Vector2d c2, Vector2d end) {
 		SVGPoint svgStart = getCurrentPoint();
-		Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
+		final Vector2d start = new Vector2d(svgStart.getX(), svgStart.getY());
 
-		int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(c2).getLengthSquared()
+		final Vector2d iend = new Vector2d(1.0 / end.getX(), 1.0 / end.getY());
+
+		final Vector2d mc1 = c1.subtract(start).multiply(iend);
+		final Vector2d mc2 = c2.subtract(start).multiply(iend);
+		final Vector2d mend = end.subtract(start).multiply(iend);
+
+		VectorPlotFunction func = new VectorPlotFunction() {
+			@Override
+			public Vector2d map(double t) {
+				double t1 = (1 - t);
+				double t2 = t1 * (1 - t);
+				double t3 = t2 * (1 - t);
+				return mc1.multiply(3 * t2 * t).add(mc2.multiply(3 * t1 * t * t))
+						.add(mend.multiply(t * t * t));
+			}
+
+			@Override
+			public Vector2d mapDerivative(double t) {
+				double t1 = (1 - t);
+				double t2 = t1 * (1 - t);
+				return mc1.multiply(3 * t2).add(mc2.subtract(mc1).multiply(6 * t1 * t))
+						.add(mend.subtract(mc2).multiply(3 * t * t));
+			}
+		};
+
+		getPen().setPlotFunction(func.getX());
+		getBoard().setPlotFunction(func.getY());
+
+		lineTo(end.getX(), end.getY());
+
+		getPen().setPlotFunction(null);
+		getBoard().setPlotFunction(null);
+
+		/*int steps = (int) (Math.sqrt(start.subtract(c1).getLengthSquared() + c1.subtract(c2).getLengthSquared()
 				+ c2.subtract(end).getLengthSquared()) * 0.75);
 		if (steps < 4)
 			steps = 4;
@@ -113,7 +155,7 @@ public class Canvas {
 			Vector2d point = start.multiply(t3).add(c1.multiply(3 * t2 * t)).add(c2.multiply(3 * t1 * t * t))
 					.add(end.multiply(t * t * t));
 			lineTo(point.getX(), point.getY());
-		}
+		}*/
 	}
 
 	public void quadraticBezierTo(double c1x, double c1y, double endX, double endY) {
@@ -165,7 +207,7 @@ public class Canvas {
 		} else {
 			double length = Math.sqrt(dx * dx + dy * dy);
 
-			board.getYMotor().synchronizeWith(new RegulatedMotor[] { pen.getXMotor() });
+			board.getYMotor().synchronizeWith(new RegulatedMotor[]{pen.getXMotor()});
 			board.setSpeed(dy / length * baseSpeed);
 			pen.setSpeed(dx / length * baseSpeed);
 			board.getYMotor().startSynchronization();
@@ -174,6 +216,9 @@ public class Canvas {
 			board.getYMotor().endSynchronization();
 			board.getYMotor().waitComplete();
 			pen.getXMotor().waitComplete();
+
+			board.complete();
+			pen.complete();
 		}
 	}
 
@@ -184,7 +229,7 @@ public class Canvas {
 	/**
 	 * Implements the Path defintion according to the w3 SVG 1.1 (Second Edition)
 	 * Specification Chapter 8.3 (Paths)
-	 * 
+	 *
 	 * @see https://www.w3.org/TR/SVG11/paths.html
 	 */
 	public void drawPath(String path) {
@@ -193,90 +238,90 @@ public class Canvas {
 		SVGPoint currentPoint = pathStart;
 		for (PathSeg segment : draw.getPathSegList()) {
 			switch (segment.getPathSegType()) {
-			case PathSeg.PATHSEG_UNKNOWN:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_UNKNOWN.");
-			case PathSeg.PATHSEG_CLOSEPATH:
-				lineTo(pathStart.getX(), pathStart.getY());
-				currentPoint = pathStart;
-				break;
-			case PathSeg.PATHSEG_MOVETO_ABS:
-				PathSegMovetoAbs ma = (PathSegMovetoAbs) segment;
-				pathStart = currentPoint = new SVGPoint(ma.getX(), ma.getY());
-				moveTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_MOVETO_REL:
-				PathSegMovetoRel mr = (PathSegMovetoRel) segment;
-				pathStart = currentPoint = currentPoint.offset(mr.getX(), mr.getY());
-				moveTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_LINETO_ABS:
-				PathSegLinetoAbs la = (PathSegLinetoAbs) segment;
-				currentPoint = new SVGPoint(la.getX(), la.getY());
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_LINETO_REL:
-				PathSegLinetoRel lr = (PathSegLinetoRel) segment;
-				currentPoint = currentPoint.offset(lr.getX(), lr.getY());
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_CURVETO_CUBIC_ABS:
-				PathSegCurvetoCubicAbs cca = (PathSegCurvetoCubicAbs) segment;
-				SVGPoint cca1 = new SVGPoint(cca.getX1(), cca.getY1());
-				SVGPoint cca2 = new SVGPoint(cca.getX2(), cca.getY2());
-				currentPoint = new SVGPoint(cca.getEndX(), cca.getEndY());
-				bezierTo(cca1.getX(), cca1.getY(), cca2.getX(), cca2.getY(), currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_CURVETO_CUBIC_REL:
-				PathSegCurvetoCubicRel ccr = (PathSegCurvetoCubicRel) segment;
-				SVGPoint ccr1 = currentPoint.offset(ccr.getX1(), ccr.getY1());
-				SVGPoint ccr2 = currentPoint.offset(ccr.getX2(), ccr.getY2());
-				currentPoint = currentPoint.offset(ccr.getEndX(), ccr.getEndY());
-				bezierTo(ccr1.getX(), ccr1.getY(), ccr2.getX(), ccr2.getY(), currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_CURVETO_QUADRATIC_ABS:
-				PathSegCurvetoQuadraticAbs cqa = (PathSegCurvetoQuadraticAbs) segment;
-				SVGPoint cqa1 = new SVGPoint(cqa.getX1(), cqa.getY1());
-				currentPoint = new SVGPoint(cqa.getEndX(), cqa.getEndY());
-				quadraticBezierTo(cqa1.getX(), cqa1.getY(), currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_CURVETO_QUADRATIC_REL:
-				PathSegCurvetoQuadraticRel cqr = (PathSegCurvetoQuadraticRel) segment;
-				SVGPoint cqr1 = new SVGPoint(cqr.getX1(), cqr.getY1());
-				currentPoint = new SVGPoint(cqr.getEndX(), cqr.getEndY());
-				quadraticBezierTo(cqr1.getX(), cqr1.getY(), currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_ARC_ABS:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_ARC_ABS.");
-			case PathSeg.PATHSEG_ARC_REL:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_ARC_REL.");
-			case PathSeg.PATHSEG_LINETO_HORIZONTAL_ABS:
-				PathSegLinetoHorizontalAbs ha = (PathSegLinetoHorizontalAbs) segment;
-				currentPoint = new SVGPoint(ha.getX(), currentPoint.getY());
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_LINETO_HORIZONTAL_REL:
-				PathSegLinetoHorizontalRel hr = (PathSegLinetoHorizontalRel) segment;
-				currentPoint = currentPoint.offset(hr.getX(), 0);
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_LINETO_VERTICAL_ABS:
-				PathSegLinetoVerticalAbs va = (PathSegLinetoVerticalAbs) segment;
-				currentPoint = new SVGPoint(currentPoint.getX(), va.getY());
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_LINETO_VERTICAL_REL:
-				PathSegLinetoVerticalRel vr = (PathSegLinetoVerticalRel) segment;
-				currentPoint = currentPoint.offset(0, vr.getY());
-				lineTo(currentPoint.getX(), currentPoint.getY());
-				break;
-			case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_ABS:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_CUBIC_SMOOTH_ABS.");
-			case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_CUBIC_SMOOTH_REL.");
-			case PathSeg.PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS.");
-			case PathSeg.PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL:
-				throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL.");
+				case PathSeg.PATHSEG_UNKNOWN:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_UNKNOWN.");
+				case PathSeg.PATHSEG_CLOSEPATH:
+					lineTo(pathStart.getX(), pathStart.getY());
+					currentPoint = pathStart;
+					break;
+				case PathSeg.PATHSEG_MOVETO_ABS:
+					PathSegMovetoAbs ma = (PathSegMovetoAbs) segment;
+					pathStart = currentPoint = new SVGPoint(ma.getX(), ma.getY());
+					moveTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_MOVETO_REL:
+					PathSegMovetoRel mr = (PathSegMovetoRel) segment;
+					pathStart = currentPoint = currentPoint.offset(mr.getX(), mr.getY());
+					moveTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_LINETO_ABS:
+					PathSegLinetoAbs la = (PathSegLinetoAbs) segment;
+					currentPoint = new SVGPoint(la.getX(), la.getY());
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_LINETO_REL:
+					PathSegLinetoRel lr = (PathSegLinetoRel) segment;
+					currentPoint = currentPoint.offset(lr.getX(), lr.getY());
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_CURVETO_CUBIC_ABS:
+					PathSegCurvetoCubicAbs cca = (PathSegCurvetoCubicAbs) segment;
+					SVGPoint cca1 = new SVGPoint(cca.getX1(), cca.getY1());
+					SVGPoint cca2 = new SVGPoint(cca.getX2(), cca.getY2());
+					currentPoint = new SVGPoint(cca.getEndX(), cca.getEndY());
+					bezierTo(cca1.getX(), cca1.getY(), cca2.getX(), cca2.getY(), currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_CURVETO_CUBIC_REL:
+					PathSegCurvetoCubicRel ccr = (PathSegCurvetoCubicRel) segment;
+					SVGPoint ccr1 = currentPoint.offset(ccr.getX1(), ccr.getY1());
+					SVGPoint ccr2 = currentPoint.offset(ccr.getX2(), ccr.getY2());
+					currentPoint = currentPoint.offset(ccr.getEndX(), ccr.getEndY());
+					bezierTo(ccr1.getX(), ccr1.getY(), ccr2.getX(), ccr2.getY(), currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_CURVETO_QUADRATIC_ABS:
+					PathSegCurvetoQuadraticAbs cqa = (PathSegCurvetoQuadraticAbs) segment;
+					SVGPoint cqa1 = new SVGPoint(cqa.getX1(), cqa.getY1());
+					currentPoint = new SVGPoint(cqa.getEndX(), cqa.getEndY());
+					quadraticBezierTo(cqa1.getX(), cqa1.getY(), currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_CURVETO_QUADRATIC_REL:
+					PathSegCurvetoQuadraticRel cqr = (PathSegCurvetoQuadraticRel) segment;
+					SVGPoint cqr1 = new SVGPoint(cqr.getX1(), cqr.getY1());
+					currentPoint = new SVGPoint(cqr.getEndX(), cqr.getEndY());
+					quadraticBezierTo(cqr1.getX(), cqr1.getY(), currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_ARC_ABS:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_ARC_ABS.");
+				case PathSeg.PATHSEG_ARC_REL:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_ARC_REL.");
+				case PathSeg.PATHSEG_LINETO_HORIZONTAL_ABS:
+					PathSegLinetoHorizontalAbs ha = (PathSegLinetoHorizontalAbs) segment;
+					currentPoint = new SVGPoint(ha.getX(), currentPoint.getY());
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_LINETO_HORIZONTAL_REL:
+					PathSegLinetoHorizontalRel hr = (PathSegLinetoHorizontalRel) segment;
+					currentPoint = currentPoint.offset(hr.getX(), 0);
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_LINETO_VERTICAL_ABS:
+					PathSegLinetoVerticalAbs va = (PathSegLinetoVerticalAbs) segment;
+					currentPoint = new SVGPoint(currentPoint.getX(), va.getY());
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_LINETO_VERTICAL_REL:
+					PathSegLinetoVerticalRel vr = (PathSegLinetoVerticalRel) segment;
+					currentPoint = currentPoint.offset(0, vr.getY());
+					lineTo(currentPoint.getX(), currentPoint.getY());
+					break;
+				case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_ABS:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_CUBIC_SMOOTH_ABS.");
+				case PathSeg.PATHSEG_CURVETO_CUBIC_SMOOTH_REL:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_CUBIC_SMOOTH_REL.");
+				case PathSeg.PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS.");
+				case PathSeg.PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL:
+					throw new IllegalStateException("Unimplemented pathseg type PATHSEG_CURVETO_QUADRATIC_SMOOTH_REL.");
 			}
 		}
 	}
