@@ -12,7 +12,7 @@ public class Board {
 
 	private double degreePerCm = 1000.0 / 12.3;
 	private double wheelRadius = 2.15;
-	private double height = 27;
+	private double height = 25.5;
 	private int yScale = -1;
 	private int gear1 = 12;
 	private int gear2 = 36;
@@ -20,6 +20,8 @@ public class Board {
 	public Board(RegulatedMotor yMotor, EV3ColorSensor sensor) {
 		this.yMotor = yMotor;
 		this.sensor = sensor;
+
+		yMotor.setAcceleration(Integer.MAX_VALUE);
 	}
 
 	public void setSpeed(double cmPerSecond) {
@@ -134,5 +136,9 @@ public class Board {
 		moveY(offsetCm);
 		yCentimeters = 0;
 		yAbsolute = 0;
+	}
+
+	public EV3ColorSensor getSensor() {
+		return sensor;
 	}
 }

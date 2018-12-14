@@ -31,7 +31,7 @@ public class Canvas {
 	private SVGMatrix transform;
 	private SVGMatrix inverse;
 
-	private double baseSpeed = 0.5;
+	private double baseSpeed = 3;
 
 	public Canvas(Pen pen, Board board) {
 		this.transform = SVGMatrix.identity();

@@ -16,14 +16,14 @@ public class Pen {
 	private double degreePerCm = 382.5 / 4.0;
 	private int xScale = -1;
 	private double width = 16.8;
-	private double beltRadiusCentimeters = 1.9;
+	private double beltRadiusCentimeters = 1.8; // was 1.9
 	private double translation = 1 / 3.0;
 
 	public Pen(RegulatedMotor xMotor, RegulatedMotor zMotor, EV3TouchSensor touch) {
 		this.xMotor = xMotor;
 		this.zMotor = zMotor;
 		this.touch = touch;
-
+		xMotor.setAcceleration(Integer.MAX_VALUE);
 		variableMotor = new VariableMotor(xMotor);
 	}
 
