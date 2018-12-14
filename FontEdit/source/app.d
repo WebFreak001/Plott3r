@@ -136,16 +136,23 @@ string serializeLines()
 					ret ~= "H" ~ str(p.x);
 				else
 					ret ~= "L" ~ str(p);
+				lastPos = p;
 			}
 			break;
 		case Line.Type.cubicBezier:
 			if (line.points.length >= 4)
+			{
 				ret ~= "C" ~ str(line.points[1] * 8) ~ " " ~ str(
 						line.points[2] * 8) ~ " " ~ str(line.points[3] * 8);
+				lastPos = line.points[3] * 8;
+			}
 			break;
 		case Line.Type.quadraticBezier:
 			if (line.points.length >= 3)
+			{
 				ret ~= "Q" ~ str(line.points[1] * 8) ~ " " ~ str(line.points[2] * 8);
+				lastPos = line.points[2] * 8;
+			}
 			break;
 		}
 	}
@@ -606,8 +613,8 @@ void main()
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender, "X - Line");
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender * 2, "C - Cubic Bezier");
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender * 3, "V - Quadratic Bezier");
-			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender, "Q - Smaller Grid");
-			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender * 2, "W - Bigger Grid");
+			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender, "Q - Bigger Grid");
+			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender * 2, "W - Smaller Grid");
 			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender * 3, "Ctrl-S - Print to Console");
 		}
 	};
@@ -640,16 +647,19 @@ void main()
 					}
 					else if (event == "X")
 					{
+						editIndex = cast(int) lines.length;
 						lines ~= Line(Line.Type.linear, [vec2(0, 0), vec2(1, 1)]);
 						sdmain.redrawOpenGlSceneNow();
 					}
 					else if (event == "C")
 					{
+						editIndex = cast(int) lines.length;
 						lines ~= Line(Line.Type.cubicBezier, [vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1)]);
 						sdmain.redrawOpenGlSceneNow();
 					}
 					else if (event == "V")
 					{
+						editIndex = cast(int) lines.length;
 						lines ~= Line(Line.Type.quadraticBezier, [vec2(0, 0), vec2(1, 0), vec2(1, 1)]);
 						sdmain.redrawOpenGlSceneNow();
 					}
