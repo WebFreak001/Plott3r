@@ -8,4 +8,12 @@ public class FontChar {
         this.path = path;
         this.offset = offset;
     }
+
+    public double getOffset() {
+        return offset;
+    }
+
+    public String getPath() {
+        return path;
+    }
 }

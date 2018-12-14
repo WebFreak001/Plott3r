@@ -5,7 +5,7 @@ import java.util.HashMap;
 public class Font {
     private HashMap<Character, FontChar> fontMapper = new HashMap<>();
     public Font() {
-        fontMapper.put('A', new FontChar("M0,8l4,-8l4,8M1,4h4", 8));
+        fontMapper.put('A', new FontChar("M0,8L3.5,-0M3.5,0L7,8M1.75,4H5.25", 8));
     }
 
     public FontChar getCharacter(Character character) {

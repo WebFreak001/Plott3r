@@ -39,11 +39,12 @@ public class Main {
 
 		Canvas canvas = new Canvas(pen, board);
 
+		Font font = new Font();
 
 		try {
-			//draw(canvas);
-			canvas.scale(0.4);
-			canvas.drawPath(new Font().getPath());
+			draw(canvas);
+			//canvas.scale(0.1);
+			//canvas.drawPath(font.getCharacter('A').getPath());
 		} finally {
 			pen.stop();
 		}
