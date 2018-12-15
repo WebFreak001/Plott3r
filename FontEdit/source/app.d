@@ -123,6 +123,7 @@ string serializeLines()
 		vec2 p = line.points[0] * 8;
 		if ((lastPos - p).length_squared > 0.00001f)
 			ret ~= "M" ~ str(p);
+		lastPos = p;
 
 		final switch (line.type)
 		{
@@ -163,7 +164,9 @@ private string str(float n)
 {
 	auto ret = n.to!string.replace(",", ".");
 	auto dot = ret.indexOf('.');
-	if (dot == -1)
+	if (ret == "-0")
+		return "0";
+	else if (dot == -1)
 		return ret;
 	else if (dot + 5 < ret.length)
 		return ret[0 .. dot + 5];
@@ -364,8 +367,22 @@ struct ScrollView(T)
 
 Line[] lines = [Line(Line.Type.cubicBezier, [vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1)])];
 ScrollView!Line linesView;
-int editIndex = 0;
+int _editIndex = 0;
 int font;
+
+int editIndex() @property
+{
+	return _editIndex;
+}
+
+int editIndex(int value) @property
+{
+	if (_editIndex >= 0 && _editIndex < lines.length)
+	{
+		lines[_editIndex].activePoint = -1;
+	}
+	return _editIndex = value;
+}
 
 enum float grabRadius = 8 / viewportWidth;
 enum float mouseGrabRadius = grabRadius * 3;
@@ -607,15 +624,25 @@ void main()
 			linesView.items = lines;
 			linesView.padding = Padding(8, 4);
 			linesView.width = min(300, canvasX);
+			linesView.height = sdmain.height;
 			linesView.draw();
 
 			nvg.fillColor = NVGColor.white;
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender, "X - Line");
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender * 2, "C - Cubic Bezier");
 			nvg.text(linesView.width + 8, 8 + nvg.textFontAscender * 3, "V - Quadratic Bezier");
-			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender, "Q - Bigger Grid");
-			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender * 2, "W - Smaller Grid");
-			nvg.text(linesView.width + 8 + 400, 8 + nvg.textFontAscender * 3, "Ctrl-S - Print to Console");
+			nvg.text(linesView.width + 8 + 150, 8 + nvg.textFontAscender, "Q - Bigger Grid");
+			nvg.text(linesView.width + 8 + 150, 8 + nvg.textFontAscender * 2, "W - Smaller Grid");
+			nvg.text(linesView.width + 8 + 150, 8 + nvg.textFontAscender * 3, "Ctrl-S - Print to Console");
+			nvg.text(linesView.width + 8 + 300, 8 + nvg.textFontAscender, "G - Reverse line");
+
+			if (editIndex >= 0 && editIndex < lines.length)
+			{
+				Line line = lines[editIndex];
+				if (line.activePoint >= 0 && line.activePoint < line.points.length)
+					nvg.text(linesView.width + 8, sdmain.height - 8,
+							"Point: " ~ str(line.points[line.activePoint] * 8));
+			}
 		}
 	};
 
@@ -645,22 +672,31 @@ void main()
 					{
 						ctrl = true;
 					}
-					else if (event == "X")
+					else if (event == "G")
 					{
-						editIndex = cast(int) lines.length;
-						lines ~= Line(Line.Type.linear, [vec2(0, 0), vec2(1, 1)]);
-						sdmain.redrawOpenGlSceneNow();
+						if (editIndex >= 0 && editIndex < lines.length)
+						{
+							lines[editIndex].points.reverse();
+							sdmain.redrawOpenGlSceneNow();
+						}
 					}
-					else if (event == "C")
+					else if (event == "X" || event == "C" || event == "V")
 					{
+						Line prev;
+						if (editIndex >= 0 && editIndex < lines.length)
+							prev = lines[editIndex];
+						vec2 start = vec2(0, 0);
+						if (prev.points.length)
+							start = prev.points[$ - 1];
 						editIndex = cast(int) lines.length;
-						lines ~= Line(Line.Type.cubicBezier, [vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1)]);
-						sdmain.redrawOpenGlSceneNow();
-					}
-					else if (event == "V")
-					{
-						editIndex = cast(int) lines.length;
-						lines ~= Line(Line.Type.quadraticBezier, [vec2(0, 0), vec2(1, 0), vec2(1, 1)]);
+						if (event == "X")
+							lines ~= Line(Line.Type.linear, [start, vec2(1, 1)]);
+						else if (event == "C")
+							lines ~= Line(Line.Type.cubicBezier, [start, vec2(1, 0), vec2(1, 1), vec2(0, 1)]);
+						else if (event == "V")
+							lines ~= Line(Line.Type.quadraticBezier, [start, vec2(1, 0), vec2(1, 1)]);
+						else
+							assert(false);
 						sdmain.redrawOpenGlSceneNow();
 					}
 					else if (event == "Ctrl-S")

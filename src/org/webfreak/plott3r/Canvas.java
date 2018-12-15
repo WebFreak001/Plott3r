@@ -31,7 +31,7 @@ public class Canvas {
 	private SVGMatrix transform;
 	private SVGMatrix inverse;
 
-	private double baseSpeed = 3;
+	private double baseSpeed = 1;
 
 	public Canvas(Pen pen, Board board) {
 		this.transform = SVGMatrix.identity();
@@ -103,8 +103,8 @@ public class Canvas {
 				+ c2.subtract(end).getLengthSquared()) * 0.75);
 		if (steps < 4)
 			steps = 4;
-		else if (steps > 32)
-			steps = 32;
+		else if (steps > 16)
+			steps = 16;
 
 		for (double t = 0; t <= 1; t += 1 / (double) (steps)) {
 			double t1 = (1 - t);
@@ -128,8 +128,8 @@ public class Canvas {
 				* 1.1);
 		if (steps < 4)
 			steps = 4;
-		else if (steps > 32)
-			steps = 32;
+		else if (steps > 16)
+			steps = 16;
 
 		for (double t = 0; t <= 1; t += 1 / (double) (steps)) {
 			double t1 = (1 - t);

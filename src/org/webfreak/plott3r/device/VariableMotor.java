@@ -130,11 +130,11 @@ class VariableMotorRegulator implements Runnable {
 	}
 
 	private double mapValue(double t) {
-		return t * t;
+		return t;
 	}
 
 	private double mapValueDerivation(double t) {
-		return 2 * t;
+		return 1;
 	}
 
 	public void observeMotor(int start, int maxSpeed, int deg) throws InterruptedException {

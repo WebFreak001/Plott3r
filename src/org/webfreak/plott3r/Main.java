@@ -10,14 +10,20 @@ import lejos.hardware.port.SensorPort;
 import lejos.hardware.sensor.EV3ColorSensor;
 import lejos.hardware.sensor.EV3TouchSensor;
 import lejos.utility.Delay;
+import org.webfreak.plott3r.font.FontChar;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 
 public class Main {
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
+		Font font = Font.fromResource("lines.plfont");
+
 		EV3TouchSensor debugButton = new EV3TouchSensor(SensorPort.S2);
 
 		float[] sample = new float[1];
@@ -39,10 +45,9 @@ public class Main {
 
 		Canvas canvas = new Canvas(pen, board);
 
-		Font font = new Font();
-
 		try {
-			draw(canvas);
+			dumpFont(canvas, font);
+			//draw(canvas);
 			//canvas.scale(0.1);
 			//canvas.drawPath(font.getCharacter('A').getPath());
 		} finally {
@@ -56,6 +61,31 @@ public class Main {
 		//Board board = new Board(Motor.D, new EV3ColorSensor(SensorPort.S4));
 
 		//calibrate(pen, board);
+	}
+
+	public static void dumpFont(Canvas canvas, Font font) {
+		int perRow = (int) (16.5 / 1.5);
+		List<Map.Entry<Integer, FontChar>> map = new ArrayList<>();
+		map.addAll(font.getMap().entrySet());
+		Collections.sort(map, new Comparator<Map.Entry<Integer, FontChar>>() {
+			@Override
+			public int compare(Map.Entry<Integer, FontChar> a, Map.Entry<Integer, FontChar> b) {
+				return a.getKey().compareTo(b.getKey());
+			}
+		});
+		int i = 0;
+		for (Map.Entry<Integer, FontChar> pair : map) {
+			canvas.loadIdentity();
+			int x = i % perRow;
+			int y = i / perRow;
+			canvas.translate(8.25, 0);
+			canvas.scale(0.72, 0.98);
+			canvas.rotate(Math.PI / 4);
+			canvas.translate(x * 1.5 + 0.1, y * 1.4);
+			canvas.scale(1.3 / 8.0);
+			canvas.drawPath(pair.getValue().getPath());
+			i++;
+		}
 	}
 
 	public static void draw(Canvas canvas) {
@@ -72,19 +102,19 @@ public class Main {
 
 	public static void calibrate(final Pen pen, final Board board) {
 		Runnable calibrateBoard = new Runnable() {
-            @Override
-            public void run() {
+			@Override
+			public void run() {
 				System.out.println("Starting Board calibration");
 				board.getYMotor().forward();
 
 				System.out.println("Finishing Board calibration");
-            }
-        };
+			}
+		};
 
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        ThreadPoolExecutor pool = (ThreadPoolExecutor) executor;
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		ThreadPoolExecutor pool = (ThreadPoolExecutor) executor;
 
-        executor.submit(calibrateBoard);
+		executor.submit(calibrateBoard);
 
 
 	}
